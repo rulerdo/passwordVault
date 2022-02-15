@@ -18,13 +18,13 @@ def connect_mongo(user,pwd):
         
         if test:
             print('Connected to MongoDB!')
-
-        return client
+            return client
 
     except errors.OperationFailure as e:
 
         if e.code == 8000:
             print(e.details['errmsg'])
+        
         exit(1)
 
     except:
@@ -32,20 +32,32 @@ def connect_mongo(user,pwd):
         exit(1)
         
 
+def name_exists(client,name):
+
+    try:
+        db = client["MyVault"]
+        col = db["MyPass"]
+        col.find_one({"name": name})["secret"]
+        result = True
+
+    except TypeError:
+        print(f'Record {name}: not found')
+        result = False
+        
+    return result
+
+
 def get_secret(client):
     
     name = input('name: ')
     db = client["MyVault"]
     col = db["MyPass"]
-
-    try:
+    
+    if name_exists(client,name):
 
         secret = col.find_one({"name": name})["secret"]
         pyperclip.copy(secret)
         print(f'{name} secret saved on clipboard!')
-
-    except TypeError:
-        print(f'Record {name}: not found')
 
 
 def insert_record(client):
@@ -53,14 +65,21 @@ def insert_record(client):
     data = dict()
 
     data['name'] = input('name: ')
-    data['url'] = input('url: ')
-    data['secret'] = getpass('secret: ')
+    
+    if name_exists(client,data['name']):
+    
+        print(f'Record {name} already exists, choose a different name')
+        
+    else:
+        print('Proceeding...')
+        data['url'] = input('url: ')
+        data['secret'] = getpass('secret: ')
 
-    db = client["MyVault"]
-    col = db["MyPass"]
-    response = col.insert_one(data)
+        db = client["MyVault"]
+        col = db["MyPass"]
+        response = col.insert_one(data)
 
-    print('Document saved with id:',response.inserted_id)
+        print('Document saved with id:',response.inserted_id)
 
 
 def list_records(client):
@@ -79,10 +98,9 @@ def edit_record(client):
     name = input('name: ')
     db = client["MyVault"]
     col = db["MyPass"]
-
-    try:
-
-        col.find_one({"name": name})["secret"]
+    
+    if name_exists(client,name):
+    
         url = input('NEW url: ')
         secret = getpass('NEW secret: ')
         filter = { "name": name}
@@ -90,24 +108,18 @@ def edit_record(client):
         col.update_one(filter, newvalues)
         print(f'{name} updated!')
 
-    except TypeError:
-        print(f'Record {name}: not found')
-
   
 def delete_record(client):
 
     name = input('name: ')
     db = client["MyVault"]
     col = db["MyPass"]
+    
+    if name_exists(client,name):
 
-    try:
-        col.find_one({"name": name})["secret"]
         filter = { "name": name}
         col.delete_one(filter)
         print(f'{name} deleted!')
-
-    except TypeError:
-        print(f'Record {name}: not found')
     
 
 if __name__ == '__main__':
