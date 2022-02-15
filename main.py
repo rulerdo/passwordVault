@@ -68,7 +68,7 @@ def insert_record(client):
     
     if name_exists(client,data['name']):
     
-        print(f'Record {name} already exists, choose a different name')
+        print(f'Record {data["name"]} already exists, choose a different name')
         
     else:
         print('Proceeding...')
