@@ -5,20 +5,17 @@ import pyperclip
 
 def connect_mongo(user,pwd):
 
-    host = "mongodb+srv://{}:{}@cluster0.pk2u7.mongodb.net/"
-    arguments = "?tls=true&tlsAllowInvalidCertificates=true"
-    uri_string = host + arguments
-    mongodb_uri = uri_string.format(user, pwd)
-
     try:
-        client = MongoClient(mongodb_uri)
-        db = client["MyVault"]
-        col = db["connection_test"]
-        test = col.find_one({"name": "test"})["value"]
+        host = "mongodb+srv://{}:{}@cluster0.pk2u7.mongodb.net/"
+        client = MongoClient(host.format(user, pwd))
+        db = client["Boveda"]
+        collection = db["test_conexion"]
+        test = collection.find_one({"name": "test"})["value"]
         
         if test:
+            collection = db["passwords"]
             print('Connected to MongoDB!')
-            return client
+            return collection
 
     except errors.OperationFailure as e:
 
@@ -32,12 +29,19 @@ def connect_mongo(user,pwd):
         exit(1)
         
 
-def name_exists(client,name):
+def list_records(collection):
+
+    # records = collection.find()
+    records = collection.find({},{ "_id": 0, "secret": 0 })
+
+    for doc in records:
+        print(doc) 
+
+
+def name_exists(collection,name):
 
     try:
-        db = client["MyVault"]
-        col = db["MyPass"]
-        col.find_one({"name": name})["secret"]
+        collection.find_one({"name": name})["secret"]
         result = True
 
     except TypeError:
@@ -47,26 +51,25 @@ def name_exists(client,name):
     return result
 
 
-def get_secret(client):
+def get_secret(collection):
     
     name = input('name: ')
-    db = client["MyVault"]
-    col = db["MyPass"]
     
-    if name_exists(client,name):
+    if name_exists(collection,name):
 
-        secret = col.find_one({"name": name})["secret"]
+        filter = {"name": name}
+        secret = collection.find_one(filter)["secret"]
         pyperclip.copy(secret)
         print(f'{name} secret saved on clipboard!')
 
 
-def insert_record(client):
+def insert_record(collection):
 
     data = dict()
 
     data['name'] = input('name: ')
     
-    if name_exists(client,data['name']):
+    if name_exists(collection,data['name']):
     
         print(f'Record {data["name"]} already exists, choose a different name')
         
@@ -75,58 +78,51 @@ def insert_record(client):
         data['url'] = input('url: ')
         data['secret'] = getpass('secret: ')
 
-        db = client["MyVault"]
-        col = db["MyPass"]
-        response = col.insert_one(data)
+        response = collection.insert_one(data)
 
         print('Document saved with id:',response.inserted_id)
 
 
-def list_records(client):
-
-    db = client["MyVault"]
-    col = db["MyPass"]
-    # dir = col.find()
-    dir = col.find({},{ "_id": 0, "secret": 0 })
-
-    for doc in dir:
-        print(doc) 
-
-
-def edit_record(client):
+def edit_record(collection):
 
     name = input('name: ')
-    db = client["MyVault"]
-    col = db["MyPass"]
-    
-    if name_exists(client,name):
+
+    if name_exists(collection,name):
     
         url = input('NEW url: ')
         secret = getpass('NEW secret: ')
         filter = { "name": name}
         newvalues = { "$set": { "secret": secret , "url": url} }
-        col.update_one(filter, newvalues)
-        print(f'{name} updated!')
+        response = collection.update_one(filter, newvalues)
+    
+        if response.acknowledged:
+            print(f'{name} updated!')
 
   
-def delete_record(client):
+def delete_record(collection):
 
     name = input('name: ')
-    db = client["MyVault"]
-    col = db["MyPass"]
     
-    if name_exists(client,name):
+    if name_exists(collection,name):
 
-        filter = { "name": name}
-        col.delete_one(filter)
-        print(f'{name} deleted!')
+        if input('Type "y" to confirm you want the {name} record deleted:') == 'y':
+
+            filter = { "name": name}
+            response = collection.delete_one(filter)
+
+            if response.acknowledged:
+                
+                print(f'{name} deleted!')
+        else:
+            print('Record delete cancelled!')
     
 
 if __name__ == '__main__':
 
     user = input('username: ')
     pwd = getpass('password: ')
-    client = connect_mongo(user,pwd)
+    collection = connect_mongo(user,pwd)
+
     finish = False
     menu = '''
 Choose from the following options:
@@ -143,26 +139,26 @@ selection : '''
 
         option = input(menu)
 
-        if option not in ['1','2','3','4','5','6']:
-
-            print('INVALID OPTION! Please try again')
-
-        else:
+        if option in ['1','2','3','4','5','6']:
 
             if option == '1':
-                list_records(client)
+                list_records(collection)
 
             elif option == '2':
-                get_secret(client)
+                get_secret(collection)
 
             elif option == '3':
-                insert_record(client)
+                insert_record(collection)
                 
             elif option == '4':
-                edit_record(client)
+                edit_record(collection)
 
             elif option == '5':
-                delete_record(client)
+                delete_record(collection)
 
             elif option == '6':
                 finish = True
+
+        else:
+            
+            print('INVALID OPTION! Please try again')
