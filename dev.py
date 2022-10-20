@@ -42,7 +42,7 @@ def obtener_password(coleccion):
     pyperclip.copy(password)
     print(f'Password de {nombre} guardado en el portapales!')
 
-
+## Otra edición de git
 def editar_documento(coleccion):
 
     nombre = input('nombre: ')
