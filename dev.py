@@ -14,7 +14,7 @@ def conectar_mongo(user,pwd):
 
     return coleccion
 
-
+#AHHHHHHHHHHHHHHHHHHH
 def agregar_documento(coleccion):
 
     doc = dict()
