@@ -3,6 +3,7 @@ from getpass import getpass
 from tabulate import tabulate
 import pyperclip
 
+
 # Probando el branch dev
 
 def conectar_mongo(user,pwd):
